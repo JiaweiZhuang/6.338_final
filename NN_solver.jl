@@ -95,7 +95,7 @@ function get_unflat(all_flattened_params, nn::NNModel)
         nn.Nvar, nn.total_l, nn.sizes, nn.lengths)
 end
 
-function train!(nn::NNModel; method=BFGS(), iterations=500, show_every=50)
+function train!(nn::NNModel, method; kwargs...)
     # for optim.jl
     function loss_wrap(all_flattened_params)
         params_list = get_unflat(all_flattened_params, nn)
@@ -104,15 +104,17 @@ function train!(nn::NNModel; method=BFGS(), iterations=500, show_every=50)
 
     # configuration optimazation options
     od = OnceDifferentiable(loss_wrap, nn.all_flattened_params; autodiff =:forward);
-    option = Optim.Options(iterations=iterations, show_trace=true, show_every=show_every)
+    println(kwargs)
+    option = Optim.Options(;store_trace=true, extended_trace=true, kwargs...)
 
     # training
-    opt = optimize(od, nn.all_flattened_params, method, option)
+    res = optimize(od, nn.all_flattened_params, method, option)
 
     # update weights
-    nn.all_flattened_params = opt.minimizer # flattened weights
-    nn.params_list = get_unflat(opt.minimizer, nn) # original weights
+    nn.all_flattened_params = res.minimizer # flattened weights
+    nn.params_list = get_unflat(res.minimizer, nn) # original weights
 
+    return res
 end
 
 function predict(nn::NNModel; t=nothing)
